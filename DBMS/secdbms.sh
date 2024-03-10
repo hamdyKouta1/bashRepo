@@ -1,38 +1,75 @@
 #!/bin/bash
 
 createDB() {
-    local dbname
-    read -p "Please enter your DB Name: " dbname
+local flag=0
+while true; do
+    local new_db_name
+    read -p "Please enter your DB Name: " new_db_name
+    if [ -d "$new_db_name" ]
+	then
+		 echo "Database already exists."
+		 flag=1
+	elif [ -z $new_db_name ]
+	then 
+		echo " can't create a database with no name."
+	elif [[ ! "$new_db_name" =~ ^[a-zA-Z][a-zA-Z0-9_]*$ ]]; then
+    		echo "Invalid database name."
+		echo " The name must start with a letter and can contain only letters, numbers, and underscores."
 
-    if [ -e "$dbname" ]; then 
-        echo "This DB already exists."
-        flag=1
-    else
-        echo "$dbname DB created successfully."
-        mkdir "$dbname"
-    fi
+
+	else
+	mkdir "$new_db_name"
+	if [ $? -eq 0 ]; then
+		echo "Database '$new_db_name' created Successfully"
+		echo "Do you want to connect to this database ?[Y/N]"
+        	read response
+
+        	case $response in
+        	[Yy]*)
+        	cd "$PWD/$new_db_name";;
+
+        	[Nn]*)
+        	return 0;;
+        	*)
+        	echo "Invalid response"
+        	esac
+		break;
+	 else
+                echo "Failed to create database '$new_db_name'."
+         fi
+   fi
+done
 }
 
 listDB() {
-    local folderArray
-    readarray -t folderArray <<< "$(ls)"
-
-    for dir in "${folderArray[@]}"; do
-        if [ -d "$dir" ]; then
-            echo "$dir"
-        fi
-    done
+   ls -F |grep /
 }
 
 deleteDB() {
-    read -p "Please enter DB Name to delete: " dbname
+    read -p "Please enter DB Name you want to delete: " del_dbname
 
-    if [ -e "$dbname" ]; then 
-        rm -r "$dbname"
-        echo "$dbname is deleted successfully."
-    else 
-        echo "$dbname not found."
-    fi
+    if [ ! -d "$del_dbname" ]; then
+        echo "Database '$del_dbname' not found."
+        return;
+	else
+	echo "Are you sure you want to delete "$del_dbname"? [Y/N]"
+	read resp
+
+        case $resp in
+        [Yy]*)
+        rm -r "$del_dbname"
+	if [ $? -eq 0 ]; then
+                    echo "Database '$del_dbname' deleted successfully."
+                else
+                    echo "Failed to delete database '$del_dbname'. Please check permissions or try again later."
+	fi
+
+        [Nn]*)
+        return;;
+        *)
+        echo "Invalid response";;
+        esac
+fi
 }
 
 connectDB() {
@@ -40,7 +77,7 @@ connectDB() {
     local folderArray
     local flag=0
 
-    if [ -e "$dbname" ]; then 
+    if [ -d "$dbname" ]; then 
         flag=1
         cd "$dbname"
         echo "$dbname is connected successfully."
@@ -128,12 +165,22 @@ deleteTable() {
     else
         echo "$tbName not found."
     fi
+
 }
 
 backToMain() {
     cd ..
     echo "back to main menu"
 }
+
+if [ -d "Databases" ];
+then
+	cd "Databases";
+else
+	mkdir "Databases";
+	cd "Databases"; 
+fi
+
 
 select name in CreateDB ListDB ConnectDB DeleteDB Exit; do
     case $REPLY in
