@@ -62,13 +62,13 @@ deleteDB() {
                     echo "Database '$del_dbname' deleted successfully."
                 else
                     echo "Failed to delete database '$del_dbname'. Please check permissions or try again later."
-	fi
-
-        [Nn]*)
+	fi;;
+	[Nn]*)
         return;;
-        *)
+        *) 
         echo "Invalid response";;
         esac
+
 fi
 }
 
@@ -119,33 +119,47 @@ listAllTable() {
 }
 
 createTable() {
-    local tableName
     read -p "Please enter your Table Name: " tableName
 
-    if [ -e "$tableName.table" ]; then
+    if [ -f "$tableName" ]; then
         echo "Error: A table with the same name already exists."
         return 1
     fi
 
     local columns
-    read -p "Please enter your columns : " columns
+    read -p "Please enter the number of columns : " columns
 
     local myColumns=()
-    read -r -a myColumns <<< "$columns"
+    local set_primary_key=0
 
-    if [ ${#myColumns[@]} -eq 0 ]; then
-        echo "Error: No columns provided."
-        return 1
-    fi
+    for((i=0; i<columns ; i++));
+    do 
+       local column_name
+       read -p "Please enter name of column $i : "
+       
+       local primary_key_response
+       if [ "$set_primary_key" -eq 0 ];
+       then 
+		read -p "Do you want to make this column your primary key ?[Y/N]" primary_key_response
+		if [[ "$primary_key_response" =~ ^[Yy]$ ]]; then
 
-    touch "$tableName.table" || {
-        echo "Error: Failed to create the table file."
-        return 1
-    }
-    local IFS=:
-    echo "${myColumns[*]}" >> "$tableName.table" 
+		    set_primary_key=1
+		fi
+	fi
+	
+	local column_datatype
+	read -p "Enter data type of column $column_name [integer/string] :" column_datatype
+	
+	mycolumns+=("$column_name:$primary_key:$column_type")
+   done
+   
+   echo "Table name: $tableName" > "${tableName}_metadata"
+   for column_info in "${columns[@]}"; do
+        echo "$column_info" >> "${tableName}_metadata"
+   done
 
-    echo "Table '$tableName' created successfully with columns: ${myColumns[*]}"
+   touch "${tableName}_data"
+   echo "Table '$tableName' created successfully."
 }
 
 insertInTable() {
