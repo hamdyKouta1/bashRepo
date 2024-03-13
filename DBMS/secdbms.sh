@@ -121,50 +121,112 @@ listAllTable() {
 createTable() {
     read -p "Please enter your Table Name: " tableName
 
-    if [ -f "$tableName" ]; then
+    if [ -f "${tableName}_metadata" ]; then
         echo "Error: A table with the same name already exists."
-        return 1
+        exit 1
     fi
 
     local columns
-    read -p "Please enter the number of columns : " columns
-
-    local myColumns=()
+    read -p "Please enter the number of columns: " columns
     local set_primary_key=0
+    local myColumns=()
 
-    for((i=0; i<columns ; i++));
-    do 
-       local column_name
-       read -p "Please enter name of column $i : "
-       
-       local primary_key_response
-       if [ "$set_primary_key" -eq 0 ];
-       then 
-		read -p "Do you want to make this column your primary key ?[Y/N]" primary_key_response
-		if [[ "$primary_key_response" =~ ^[Yy]$ ]]; then
+    for ((i=0; i<columns; i++)); do 
+        local column_name
+        read -p "Please enter name of column $i: " column_name
+            
+        local primary_key_response
+        if [ "$set_primary_key" -eq 0 ]; then 
+            read -p "Do you want to make this column your primary key? [Y/N] " primary_key_response
+            if [[ "$primary_key_response" =~ ^[Yy]$ ]]; then
+                set_primary_key=1
+            fi
+        fi
 
-		    set_primary_key=1
-		fi
-	fi
-	
-	local column_datatype
-	read -p "Enter data type of column $column_name [integer/string] :" column_datatype
-	
-	mycolumns+=("$column_name:$primary_key:$column_type")
-   done
-   
-   echo "Table name: $tableName" > "${tableName}_metadata"
-   for column_info in "${columns[@]}"; do
+        local column_datatype
+        read -p "Enter data type of column $column_name [integer/string]: " column_datatype
+
+        myColumns+=("$column_name:$set_primary_key:$column_datatype")
+    done
+
+    echo "Table name: $tableName" > "${tableName}_metadata"
+    for column_info in "${myColumns[@]}"; do
         echo "$column_info" >> "${tableName}_metadata"
-   done
+    done
 
-   touch "${tableName}_data"
-   echo "Table '$tableName' created successfully."
+    touch "${tableName}_data"
+    echo "Table '$tableName' created successfully."
 }
+
 
 insertInTable() {
-    echo "done"
+    local table_name
+    read -p "Enter your table name: " table_name
+    local metadata_file="${table_name}_metadata"
+    local data_file="${table_name}_data"
+
+    if [ ! -f "$metadata_file" ]; then
+        echo "Error: Table '$table_name' does not exist."
+        return 1
+    fi
+
+    local columns=()
+    local skip=true
+    while IFS=':' read -r column_name is_primary_key column_datatype; do
+        if [ "$skip" = true ]; then
+            skip=false
+            continue 
+        fi
+        columns+=("$column_name:$is_primary_key:$column_datatype")
+    done < "$metadata_file"
+
+    local data=()
+    for column_info in "${columns[@]}"; do
+        IFS=':' read -r column_name is_primary_key column_datatype <<< "$column_info"
+        read -p "Enter data for column $column_name: " column_value
+	echo pk = $is_primary_key
+	if [ "$is_primary_key" -eq 1 ]; then
+            
+              if isPrimaryKeyValueUnique "$data_file" "$column_value"; then
+                echo "Error: Data for primary key '$column_name' must be unique."
+                return 1
+            fi 
+           
+        fi
+
+
+        if [ "$column_datatype" = "integer" ] && ! [[ "$column_value" =~ ^[0-9]+$ ]]; then
+            echo "Error: Invalid data type for column $column_name. Expected integer."
+            return 1
+        elif [ "$column_datatype" = "string" ] && [[ "$column_value" =~ ^[0-9]+$ ]]; then
+            echo "Error: Invalid data type for column $column_name. Expected string."
+            return 1
+        fi
+
+        data+=("$column_value")
+    done
+
+    echo "${data[*]}" >> "$data_file"
+    echo "Data inserted successfully into table '$table_name'."
 }
+
+
+isPrimaryKeyValueUnique() {
+    local data_file="$1"
+    local column_value="$2"
+
+    while IFS= read -r line; do
+        # Check if primary key value already exists in the data file
+        primary_key_value=$(echo "$line" | cut -d':' -f1)
+        if [ "$primary_key_value" = "$column_value" ]; then
+            return 1  # Not unique
+        fi
+    done < "$data_file"
+
+    return 0
+}
+
+
 
 updateTable() {
     echo "done"
