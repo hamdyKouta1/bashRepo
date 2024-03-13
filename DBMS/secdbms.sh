@@ -1,7 +1,12 @@
 #!/bin/bash
+ db_c="DBContainer"
 
 createDB() {
 local flag=0
+echo "Creating New DataBase"
+echo "Type 'Cancel' to Cancel The Process" 
+pattern="^(cancel|Cancel|CANCEL)$"
+
 while true; do
     local new_db_name
     read -p "Please enter your DB Name: " new_db_name
@@ -16,6 +21,9 @@ while true; do
     		echo "Invalid database name."
 		echo " The name must start with a letter and can contain only letters, numbers, and underscores."
 
+	elif [[ "$new_db_name" =~ $pattern ]]; then
+    	echo "canceled"
+        break
 
 	else
 	mkdir "$new_db_name"
@@ -26,9 +34,12 @@ while true; do
 
         	case $response in
         	[Yy]*)
-        	cd "$PWD/$new_db_name";;
+        	cd "$PWD/$new_db_name"
+            openConnection
+            ;;
 
         	[Nn]*)
+	    	echo "Database '$new_db_name' created Successfully Type 2 to list your DBs"
         	return 0;;
         	*)
         	echo "Invalid response"
@@ -57,15 +68,16 @@ deleteDB() {
 
         case $resp in
         [Yy]*)
-        rm -r "$del_dbname"
-	if [ $? -eq 0 ]; then
-                    echo "Database '$del_dbname' deleted successfully."
-                else
-                    echo "Failed to delete database '$del_dbname'. Please check permissions or try again later."
-	fi
+            rm -r "$del_dbname"
+            if [ $? -eq 0 ]; then
+                echo "Database '$del_dbname' deleted successfully."
+            else
+                echo "Failed to delete database '$del_dbname'. Please check permissions or try again later."
+            fi;;
 
         [Nn]*)
-        return;;
+
+             return;;
         *)
         echo "Invalid response";;
         esac
@@ -80,7 +92,7 @@ connectDB() {
     if [ -d "$dbname" ]; then 
         flag=1
         cd "$dbname"
-        echo "$dbname is connected successfully."
+        echo "Connected To DB: $dbname ."
         openConnection
         break
     else
@@ -89,6 +101,7 @@ connectDB() {
 }
 
 openConnection() {
+    
     select name in ViewTable ListAllTable CreateTable InsertInTable UpdateTable DeleteTable Back; do
         case $REPLY in
             1) viewTable ;;
@@ -100,6 +113,7 @@ openConnection() {
             7) backToMain; break ;;
             *) echo "Invalid input" ;;
         esac
+    
     done
 }
 
@@ -108,14 +122,7 @@ viewTable() {
 }
 
 listAllTable() {
-    local folderArray
-    readarray -t folderArray <<< "$(ls)"
-
-    for file in "${folderArray[@]}"; do
-        if [ -f "$file" ]; then
-            echo "$file"
-        fi
-    done
+    ls -F |grep .table
 }
 
 createTable() {
@@ -172,13 +179,16 @@ backToMain() {
     cd ..
     echo "back to main menu"
 }
+exitDBMS(){
+    cd ..
+    echo "disconnected"
+}
 
-if [ -d "Databases" ];
-then
-	cd "Databases";
+if [ -d "$db_c" ]; then
+    cd "$db_c"
 else
-	mkdir "Databases";
-	cd "Databases"; 
+    mkdir "$db_c"
+    cd "$db_c"
 fi
 
 
@@ -188,7 +198,7 @@ select name in CreateDB ListDB ConnectDB DeleteDB Exit; do
         2) listDB ;;
         3) connectDB ;;
         4) deleteDB ;;
-        5) break ;;
+        5) exitDBMS; break ;;
         *) echo "Invalid input" ;;
     esac
 done
