@@ -125,35 +125,62 @@ listAllTable() {
     ls -F |grep .table
 }
 
+
 createTable() {
-    local tableName
     read -p "Please enter your Table Name: " tableName
 
-    if [ -e "$tableName.table" ]; then
+    if [ -f "$tableName" ]; then
         echo "Error: A table with the same name already exists."
         return 1
     fi
 
     local columns
-    read -p "Please enter your columns : " columns
+    read -p "Please enter the number of columns : " columns
 
     local myColumns=()
-    read -r -a myColumns <<< "$columns"
+    local set_primary_key=0
+    local flag_pk=0
 
-    if [ ${#myColumns[@]} -eq 0 ]; then
-        echo "Error: No columns provided."
-        return 1
-    fi
 
-    touch "$tableName.table" || {
-        echo "Error: Failed to create the table file."
-        return 1
-    }
-    local IFS=:
-    echo "${myColumns[*]}" >> "$tableName.table" 
+    for((i=0; i<columns ; i++));
+    do 
+        
+       local column_name
+       read -p "Please enter name of column $((i+1)) : " column_name
+       
+       local primary_key_response
 
-    echo "Table '$tableName' created successfully with columns: ${myColumns[*]}"
+       if [ "$flag_pk" -eq 0 ]; then
+            if [ "$set_primary_key" -eq 0 ];
+            then 
+                    read -p "Do you want to make this column your primary key ?[Y/N]" primary_key_response
+                    if [[ "$primary_key_response" =~ ^[Yy]$ ]]; then
+
+                        set_primary_key=1
+                        flag_pk=1
+                    fi
+                fi
+        fi
+        local column_datatype
+        read -p "Enter data type of column $column_name [integer/string] :" column_datatype
+       
+        mycolumns[$i]="$column_name:$set_primary_key:$column_datatype"
+        set_primary_key=0
+   done
+   
+   echo "Table name: $tableName" >> "${tableName}_metadata"
+
+   for column_info in "${mycolumns[@]}"; do
+    echo "$column_info"
+        echo "$column_info" >> "${tableName}_metadata"
+   done
+
+   touch "${tableName}_data.table"
+   echo "${mycolumns[@]}"
+   echo "Table '$tableName' created successfully."
+   
 }
+
 
 insertInTable() {
     echo "done"
