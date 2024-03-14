@@ -276,7 +276,8 @@ insertInTable() {
 
 
 
- 
+unset  columns_names_arr
+unset  columns_types_arr
    
     echo "Data inserted successfully into table '$table_name'."
 }
@@ -285,19 +286,81 @@ insertInTable() {
 
 
 updateTable() {
-    echo "done"
-}
+   
+    local table_name
+    read -p "Enter your table name: " table_name
 
-deleteTable() {
-    read -p "Please enter Table Name to delete: " tbName
+    local metadata_file="${table_name}_metadata"
 
-    if [ -e "${tbName}_data.table" ]; then 
-        rm -r ${tbName}_data.table
-        rm -r ${tbName}_metadata
-        echo "${tbName}_data.table is deleted successfully."
-    else
-        echo "${tbName}_data.table not found."
+    local data_file="${table_name}_data.table"
+
+    if [ ! -f "$metadata_file" ]; then
+        echo "Error: Table '$table_name' does not exist."
+        return 1
     fi
+
+    local columns=()
+
+    get_pk=$(awk -F ':' '$2=="1"{print $1}' "${table_name}_metadata")
+    get_pk_nr=$(awk -F ':' '$2=="1"{print NR}' "${table_name}_metadata")
+    pk_nr=$((get_pk_nr-1))
+    get_all_columns_name=$(awk -F ':' 'NR!=1 {print $1}' "${table_name}_metadata")
+    get_all_columns_type=$(awk -F ':' 'NR!=1 {print $3}' "${table_name}_metadata")
+
+    num_records=$(awk 'END {print NR}' "${table_name}_metadata")
+
+    echo "your pk is : $get_pk which is field no. $pk_nr"
+
+    readarray -t columns_names_arr <<< "$get_all_columns_name"
+    readarray -t columns_types_arr <<< "$get_all_columns_type"
+
+    echo "${columns_names_arr[@]}"
+  
+
+    myData=()
+
+     local target_record
+     local target_field
+
+     read -p "Enter value of $get_pk to update : " target_record
+
+     read -p "Enter column name to update : " target_field
+
+    let c=1
+    for val in "${columns_names_arr[@]}"; do
+    if [[ $val == $target_field ]]; then
+        found=1
+        break
+    fi
+    ((c++))
+    done
+    temp_file="tmp%tmp"
+    touch "$temp_file"
+
+    local updated_value
+
+    read -p "Enter  new value : " updated_value
+
+    field_name="$pk_nr"
+    value_to_check="$target_record"
+
+awk -F ':' -v field="$field_name" -v val="$value_to_check" -v updatec="$c" -v updated_value="$updated_value" '
+    BEGIN { OFS=":" }
+    $field == val {  found=1;   $updatec=updated_value; }   
+    1
+  
+' "${table_name}_data.table" > "${temp_file}"
+
+        #if [ -n "$res" ] && [ "$res" -eq 1 ]; then
+         #   echo "updated"
+          #  flag=1
+        #fi
+        mv "$temp_file" "${table_name}_data.table"
+
+
+    echo " ${columns_names_arr[$((c-1))]}"
+
+
 
 }
 
