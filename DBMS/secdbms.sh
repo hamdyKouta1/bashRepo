@@ -118,7 +118,14 @@ openConnection() {
 }
 
 viewTable() {
-    echo "done"
+    local tbName
+    read -p "Please enter name of table : " tbName
+    if [ -e "${tbName}_data.table" ]; then
+    cat "${tbName}_metadata"
+    else
+    echo "not found"
+    fi
+       
 }
 
 listAllTable() {
@@ -129,7 +136,7 @@ listAllTable() {
 createTable() {
     read -p "Please enter your Table Name: " tableName
 
-    if [ -f "$tableName" ]; then
+    if [ -e "${tableName}_data.table" ]; then
         echo "Error: A table with the same name already exists."
         return 1
     fi
@@ -178,16 +185,22 @@ createTable() {
    touch "${tableName}_data.table"
    echo "${mycolumns[@]}"
    echo "Table '$tableName' created successfully."
+
+   unset mycolumns
    
 }
 
 
 
+
 insertInTable() {
+
     local table_name
     read -p "Enter your table name: " table_name
+
     local metadata_file="${table_name}_metadata"
-    local data_file="${table_name}_data"
+
+    local data_file="${table_name}_data.table"
 
     if [ ! -f "$metadata_file" ]; then
         echo "Error: Table '$table_name' does not exist."
@@ -195,60 +208,80 @@ insertInTable() {
     fi
 
     local columns=()
+
     local skip=true
-    while IFS=':' read -r column_name is_primary_key column_datatype; do
-        if [ "$skip" = true ]; then
-            skip=false
-            continue 
-        fi
-        columns+=("$column_name:$is_primary_key:$column_datatype")
-    done < "$metadata_file"
 
-    local data=()
-    for column_info in "${columns[@]}"; do
-        IFS=':' read -r column_name is_primary_key column_datatype <<< "$column_info"
-        read -p "Enter data for column $column_name: " column_value
-	echo pk = $is_primary_key
-	if [ "$is_primary_key" -eq 1 ]; then
-            
-              if isPrimaryKeyValueUnique "$data_file" "$column_value"; then
-                echo "Error: Data for primary key '$column_name' must be unique."
-                return 1
-            fi 
-           
-        fi
+    get_pk=$(awk -F ':' '$2=="1"{print $1}' "${table_name}_metadata")
+    get_pk_nr=$(awk -F ':' '$2=="1"{print NR}' "${table_name}_metadata")
+    pk_nr=$((get_pk_nr-1))
+    get_all_columns_name=$(awk -F ':' 'NR!=1 {print $1}' "${table_name}_metadata")
+    get_all_columns_type=$(awk -F ':' 'NR!=1 {print $3}' "${table_name}_metadata")
 
+    num_records=$(awk 'END {print NR}' "${table_name}_metadata")
 
-        if [ "$column_datatype" = "integer" ] && ! [[ "$column_value" =~ ^[0-9]+$ ]]; then
-            echo "Error: Invalid data type for column $column_name. Expected integer."
-            return 1
-        elif [ "$column_datatype" = "string" ] && [[ "$column_value" =~ ^[0-9]+$ ]]; then
-            echo "Error: Invalid data type for column $column_name. Expected string."
-            return 1
-        fi
+    echo "your pk is : $get_pk which is field no. $pk_nr"
 
-        data+=("$column_value")
+    readarray -t columns_names_arr <<< "$get_all_columns_name"
+    readarray -t columns_types_arr <<< "$get_all_columns_type"
+
+    for c_name in "${columns_names_arr[@]}"; do
+        echo "Column: $c_name"
     done
 
-    echo "${data[*]}" >> "$data_file"
+    myData=()
+
+
+
+    for((i=0; i<((num_records-1)) ; i++));
+    do
+    local flag=0
+     local column_values=""
+     read -p "Enter data for column ${columns_names_arr[$i]} : " column_value
+
+      if [ $((i+1)) -eq $pk_nr ]; then
+    
+
+
+        field_name="$pk_nr"
+        value_to_check="$column_value"
+
+        res=$(awk -F ':' -v field="$field_name" -v val="$value_to_check" '$field == val {found=1; exit} END{print found}' "${table_name}_data.table")
+
+        if [ -n "$res" ] && [ "$res" -eq 1 ]; then
+            echo "THIS PK IS RESOLVED"
+            flag=1
+        fi
+     fi
+
+
+     if [ ${columns_types_arr[$i]}  = "integer" ] && ! [[ "$column_value" =~ ^[0-9]+$ ]]; then
+            echo "Error: Invalid data type for column $column_name. Expected integer."
+            return 1
+        elif [ ${columns_types_arr[$i]}  = "string" ] && [[ "$column_value" =~ ^[0-9]+$ ]]; then
+            echo "Error: Invalid data type for column $column_name. Expected string."
+            return 1
+     fi
+
+        myData[$i]=$column_value  
+
+        if [ "$flag" -eq 1 ]; then
+        ((i--))
+        fi
+
+    done
+
+    echo "${myData[@]}"
+    local IFS=:
+    echo "${myData[*]}" >> "${table_name}_data.table"
+
+
+
+ 
+   
     echo "Data inserted successfully into table '$table_name'."
 }
 
 
-isPrimaryKeyValueUnique() {
-    local data_file="$1"
-    local column_value="$2"
-
-    while IFS= read -r line; do
-        # Check if primary key value already exists in the data file
-        primary_key_value=$(echo "$line" | cut -d':' -f1)
-        if [ "$primary_key_value" = "$column_value" ]; then
-            return 1  # Not unique
-        fi
-    done < "$data_file"
-
-    return 0
-}
 
 
 updateTable() {
@@ -258,11 +291,12 @@ updateTable() {
 deleteTable() {
     read -p "Please enter Table Name to delete: " tbName
 
-    if [ -e "$tbName".table ]; then 
-        rm -r "$tbName"
-        echo "$tbName is deleted successfully."
+    if [ -e "${tbName}_data.table" ]; then 
+        rm -r ${tbName}_data.table
+        rm -r ${tbName}_metadata
+        echo "${tbName}_data.table is deleted successfully."
     else
-        echo "$tbName not found."
+        echo "${tbName}_data.table not found."
     fi
 
 }
