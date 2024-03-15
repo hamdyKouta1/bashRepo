@@ -110,7 +110,7 @@ connectDB() {
 
 openConnection() {
     
-    select name in View_MetaData_Of_Table List_All_Table Create_Table Insert_Into_Table Update_Into_Table Delete_From_Table Delete_Table Back; do
+    select name in View_MetaData_Of_Table List_All_Table Create_Table Insert_Into_Table Update_Into_Table Delete_From_Table Delete_Table Select_From_Table Back; do
         case $REPLY in
             1) viewTable ;;
             2) listAllTable ;;
@@ -119,7 +119,8 @@ openConnection() {
             5) updateTable ;;
             6) deletefromTable ;;
             7) deleteTable ;;
-            8) backToMain; break ;;
+            8) selectFromTable ;;
+            9) backToMain; break ;;
             *) echo "Invalid input" ;;
         esac
     
@@ -304,12 +305,10 @@ unset  columns_types_arr
 
 
 updateTable() {
-    # Prompt user for table name
     read -p "Enter your table name: " table_name
     metadata_file="${table_name}_metadata"
     data_file="${table_name}_data.table"
 
-    # Check if metadata file exists
     if [ ! -f "$metadata_file" ]; then
         echo "Error: Table '$table_name' does not exist."
         return 1
@@ -337,11 +336,14 @@ updateTable() {
         fi
     done
 
-    # Validate input for target column
     while true; do    
         read -p "Enter column name to update: " target_field
-        if [[ " ${columns_names_arr[@]} " =~ " $target_field " ]]; then
+        if [[ " ${columns_names_arr[@]} " =~ " $target_field " ]] ; then
+            if [[ " ${get_pk} " != " $target_field " ]]; then
             break
+            else
+            echo "It's Not Allowed To Update PK column"
+            fi
         else
             echo "Target field not found. Please try again."
         fi
@@ -392,8 +394,6 @@ updateTable() {
 
 
 deletefromTable(){
-
-
 
     local table_name
     read -p "Enter your table name: " table_name
@@ -470,7 +470,125 @@ deletefromTable(){
 }
 
 
+selectFromTable() {
+   select name in Select_All_Table Select_With_Column_Name Select_With_Condition Cancel; do
+    case $REPLY in
+        1) selectAllTable ;;
+        2) selectWithColumnName ;;
+        3) selectWithCondition ;;
+        4) openConnection ;;
+        *) echo "Invalid input" ;;
 
+    esac
+done 
+}
+
+selectAllTable(){
+    read -p "Enter the table name: " table_name
+    local data_file="${table_name}_data.table"
+    if [ ! -f "${table_name}_data.table" ]; then
+        echo "Error: Table '$table_name' does not exist."
+        return 1
+    fi
+
+    awk -F ':' '{ print $0 }' "$data_file"
+                
+}
+
+selectWithColumnName(){
+    read -p "Enter the table name: " table_name
+
+
+    if [ ! -f "${table_name}_data.table" ]; then
+        echo "Error: Table '$table_name' does not exist."
+        return 1
+    fi
+    local metadata_file="${table_name}_metadata"
+    local data_file="${table_name}_data.table"
+
+    local get_all_columns_name=$(awk -F ':' 'NR!=1 {print $1}' "$metadata_file")
+    readarray -t columns_names_arr <<< "$get_all_columns_name"
+
+    local column_index
+    read -p "Enter the column name: " column_name
+
+    if ! [[ " ${columns_names_arr[@]} " =~ " $column_name " ]]; then
+        echo "Error: '$column_name' is not a valid column name."
+        return 1
+    fi
+
+    for ((i = 0; i < ${#columns_names_arr[@]}; i++)); do
+    if [[ "${columns_names_arr[i]}" == "$column_name" ]]; then
+        column_index=$i
+        break
+    fi
+   done
+
+   awk -F ':' -v col_index="$((column_index + 1))" ' { print $col_index }' "$data_file"
+
+
+
+}
+
+
+selectWithCondition() {   
+    read -p "Enter the table name: " table_name
+    if [ ! -f "${table_name}_data.table" ]; then
+        echo "Error: Table '$table_name' does not exist."
+        return 1
+    fi
+
+    local metadata_file="${table_name}_metadata"
+    local data_file="${table_name}_data.table"
+
+    local get_all_columns_name=$(awk -F ':' 'NR!=1 {print $1}' "$metadata_file")
+    readarray -t columns_names_arr <<< "$get_all_columns_name"
+
+    local condition_column_index
+    local select_column_index
+
+    read -p "Enter the column name to select: " select_column
+    read -p "Enter the condition column name: " condition_column
+    read -p "Enter the condition column value: " column_value
+
+     if ! [[ " ${columns_names_arr[@]} " =~ " $select_column " ]]; then
+        echo "Error: '$select_column' is not a valid column name."
+        return 1
+    fi
+
+    if ! [[ " ${columns_names_arr[@]} " =~ " $condition_column " ]]; then
+        echo "Error: '$condition_column' is not a valid column name."
+        return 1
+    fi
+
+
+    for ((i = 0; i < ${#columns_names_arr[@]}; i++)); do
+    if [[ "${columns_names_arr[i]}" == "$condition_column" ]]; then
+        condition_column_index=$i
+        break
+    fi
+   done
+
+   for ((i = 0; i < ${#columns_names_arr[@]}; i++)); do
+     if [[ "${columns_names_arr[i]}" == "$select_column" ]]; then
+        select_column_index=$i
+        break
+     fi
+   done
+
+
+   local output=$(awk -F ':' -v cond_value="$column_value" -v sel_column="$((select_column_index + 1))" \
+                    -v OFS=':' -v cond_col="$((condition_column_index + 1))" \
+                    '$cond_col == cond_value { print $sel_column }' "$data_file")
+
+
+
+    if [ -z "$output" ]; then
+          echo "No rows found in table '$table_name' where '$condition_column' equals '$column_value'."
+    else
+          echo "$output"
+    fi
+}
 
 backToMain() {
     cd ..
