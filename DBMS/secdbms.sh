@@ -53,7 +53,15 @@ done
 }
 
 listDB() {
-   ls -F |grep /
+   
+local output=$(ls -F |grep /)
+
+if [ -z "$output" ]; then
+  echo "No DBS Are Found"
+else
+  echo "$output"
+fi
+
 }
 
 deleteDB() {
@@ -102,15 +110,16 @@ connectDB() {
 
 openConnection() {
     
-    select name in ViewTable ListAllTable CreateTable InsertInTable UpdateTable DeleteTable Back; do
+    select name in View_MetaData_Of_Table List_All_Table Create_Table Insert_Into_Table Update_Into_Table Delete_From_Table Delete_Table Back; do
         case $REPLY in
             1) viewTable ;;
             2) listAllTable ;;
             3) createTable ;;
             4) insertInTable ;;
             5) updateTable ;;
-            6) deleteTable ;;
-            7) backToMain; break ;;
+            6) deletefromTable ;;
+            7) deleteTable ;;
+            8) backToMain; break ;;
             *) echo "Invalid input" ;;
         esac
     
@@ -129,7 +138,15 @@ viewTable() {
 }
 
 listAllTable() {
-    ls -F |grep .table
+   
+local output=$(ls -F | grep '.table')
+
+if [ -z "$output" ]; then
+  echo "No Tables Are Found"
+else
+  echo "$output"
+fi
+
 }
 
 
@@ -285,8 +302,99 @@ unset  columns_types_arr
 
 
 
+
 updateTable() {
+    # Prompt user for table name
+    read -p "Enter your table name: " table_name
+    metadata_file="${table_name}_metadata"
+    data_file="${table_name}_data.table"
+
+    # Check if metadata file exists
+    if [ ! -f "$metadata_file" ]; then
+        echo "Error: Table '$table_name' does not exist."
+        return 1
+    fi
+
+    get_pk=$(awk -F ':' '$2=="1"{print $1}' "$metadata_file")
+    pk_nr=$(awk -F ':' '$2=="1"{print NR-1}' "$metadata_file")
+    columns_names_arr=($(awk -F ':' 'NR!=1{print $1}' "$metadata_file"))
+    columns_types_arr=($(awk -F ':' 'NR!=1{print $3}' "$metadata_file"))
+
+    echo "Primary key: $get_pk (field no. $pk_nr)"
+    echo "Columns: ${columns_names_arr[@]}"
+    echo "Column types: ${columns_types_arr[@]}"
+    echo "Column types: ${columns_types_arr[$((pk_nr-1))]}"
+
+    read -p "Enter value of $get_pk to update: " target_record
+    while true; do 
+        if [[ ${columns_types_arr[pk_nr-1]} == "integer" ]] && [[ "$target_record" =~ ^[0-9]+$ ]]; then
+            break    
+        elif [[ ${columns_types_arr[pk_nr-1]} == "string" ]] && [[ "$target_record" =~ ^[a-zA-Z0-9]+$ ]]; then
+            break
+        else
+            echo "Invalid input. Must match the primary key data type."
+            read -p "Enter value of $get_pk to update: " target_record
+        fi
+    done
+
+    # Validate input for target column
+    while true; do    
+        read -p "Enter column name to update: " target_field
+        if [[ " ${columns_names_arr[@]} " =~ " $target_field " ]]; then
+            break
+        else
+            echo "Target field not found. Please try again."
+        fi
+    done
+
+    for ((i=0; i<${#columns_names_arr[@]}; i++)); do
+        if [[ "${columns_names_arr[i]}" == "$target_field" ]]; then
+            update_index=$i
+            break
+        fi
+    done
+
+    read -p "Enter new value for $target_field: " updated_value
+    if [[ ${columns_types_arr[update_index]} == "integer" ]] && [[ ! "$updated_value" =~ ^[0-9]+$ ]]; then
+        echo "Invalid input for integer type column."
+        return 1
+    elif [[ ${columns_types_arr[update_index]} == "string" ]] && [[ ! "$updated_value" =~ ^[a-zA-Z0-9]+$ ]]; then
+        echo "Invalid input for string type column."
+        return 1
+    fi
+
+
+
+ res=$(awk -F ':' -v field="$pk_nr" -v val="$target_record" '
+        BEGIN { OFS=":"; IFS=":" }
+        $field == val { found=1 }
+        END { print found }
+    ' "${table_name}_data.table")
+
+        if [ -n "$res" ] && [ "$res" -eq 1 ]; then
+
    
+    awk -F ':' -v field="$pk_nr" -v val="$target_record" -v updatec=$((update_index+1)) -v updated_value="$updated_value" '
+        BEGIN { OFS=":"; IFS=":" }
+        $field == val { $updatec = updated_value; }
+        { print }
+    ' "$data_file" > "${data_file}.tmp" && mv "${data_file}.tmp" "$data_file"
+
+    echo "Record updated successfully."
+    else 
+        echo "Record is not found."
+
+    fi
+}
+
+
+
+
+
+deletefromTable(){
+
+
+
     local table_name
     read -p "Enter your table name: " table_name
 
@@ -314,57 +422,23 @@ updateTable() {
     readarray -t columns_names_arr <<< "$get_all_columns_name"
     readarray -t columns_types_arr <<< "$get_all_columns_type"
 
-    echo "${columns_names_arr[@]}"
+    echo "columns: ${columns_names_arr[@]}"
   
-
-    myData=()
 
      local target_record
      local target_field
-     while true; do    
-     read -p "Enter value of $get_pk to update : " target_record
-        if [ ${columns_types_arr[$pk_nr]}  = "integer" ] && [[ "$target_record" =~ ^[0-9]+$ ]]; then
+    read -p "Enter value of $get_pk to delete: " target_record
+    while true; do 
+        if [[ ${columns_types_arr[pk_nr-1]} == "integer" ]] && [[ "$target_record" =~ ^[0-9]+$ ]]; then
             break    
-        elif [ ${columns_types_arr[$pk_nr]}  = "string" ] && [[ "$target_record" =~ ^[0-9]+$ ]]; then
+        elif [[ ${columns_types_arr[pk_nr-1]} == "string" ]] && [[ "$target_record" =~ ^[a-zA-Z0-9]+$ ]]; then
             break
         else
-        echo "not compatible type"
+            echo "Invalid input. Must match the primary key data type."
+            read -p "Enter value of $get_pk to delete: " target_record
         fi
-     done
-
-
-      while true; do    
-     read -p "Enter column name to update : " target_field
-         if [[ " ${columns_names_arr[@]} " =~ " $target_field " ]]; then
-             break
-        else
-            echo "Target field not found. Please try again."
-        fi
-     done
-
-    let c=1
-    for val in "${columns_names_arr[@]}"; do
-    if [[ $val == $target_field ]]; then
-        found=1
-        break
-    fi
-    ((c++))
     done
 
-    
-
-    local updated_value
-
-while true; do    
-    read -p "Enter  new value : " updated_value
-        if [ ${columns_types_arr[$((c-1))]}  = "integer" ] && [[ "$target_record" =~ ^[0-9]+$ ]]; then
-            break    
-        elif [ ${columns_types_arr[$((c-1))]}  = "string" ] && [[ "$target_record" =~ ^[0-9]+$ ]]; then
-            break
-        else
-        echo "not compatible type"
-        fi
-     done
     field_name="$pk_nr"
     value_to_check="$target_record"
 
@@ -377,19 +451,15 @@ while true; do
 
         if [ -n "$res" ] && [ "$res" -eq 1 ]; then
 
-            echo "found and updated"
+            echo "found and delete"
 
             temp_file="tmp%tmp"
             touch "$temp_file"
 
-            awk -F ':' -v field="$field_name" -v val="$value_to_check" -v updatec="$c" -v updated_value="$updated_value" '
-                    BEGIN { OFS=":";IFS=":" }
-                    $field == val {  found=1;   $updatec=updated_value; }   
-                    1
-                    
-                    ' "${table_name}_data.table" > "${temp_file}"
+           awk -F ':' -v field="$field_name" -v val="$value_to_check" '
+                    BEGIN { OFS=":"; IFS=":" }
+                    $field != val ' "${table_name}_data.table" > "${temp_file}"
 
-       
         
             mv "$temp_file" "${table_name}_data.table"
 
@@ -397,11 +467,10 @@ while true; do
             echo "target record can not be found"
         fi
        
-
-
-
-
 }
+
+
+
 
 backToMain() {
     cd ..
@@ -420,7 +489,7 @@ else
 fi
 
 
-select name in CreateDB ListDB ConnectDB DeleteDB Exit; do
+select name in Create_DB List_All_DBs Connect_DB Delete_DB Exit; do
     case $REPLY in
         1) createDB ;;
         2) listDB ;;
