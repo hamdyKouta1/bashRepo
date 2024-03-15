@@ -1,10 +1,4 @@
 #!/bin/bash
-<<<<<<< HEAD
-
-createDB() {
-local flag=0
-=======
- db_c="DBContainer"
 
 createDB() {
 local flag=0
@@ -12,7 +6,6 @@ echo "Creating New DataBase"
 echo "Type 'Cancel' to Cancel The Process" 
 pattern="^(cancel|Cancel|CANCEL)$"
 
->>>>>>> a3a376a68298d07c8d689e5158f30f3dff0ba268
 while true; do
     local new_db_name
     read -p "Please enter your DB Name: " new_db_name
@@ -27,12 +20,9 @@ while true; do
     		echo "Invalid database name."
 		echo " The name must start with a letter and can contain only letters, numbers, and underscores."
 
-<<<<<<< HEAD
-=======
 	elif [[ "$new_db_name" =~ $pattern ]]; then
     	echo "canceled"
         break
->>>>>>> a3a376a68298d07c8d689e5158f30f3dff0ba268
 
 	else
 	mkdir "$new_db_name"
@@ -43,18 +33,12 @@ while true; do
 
         	case $response in
         	[Yy]*)
-<<<<<<< HEAD
-        	cd "$PWD/$new_db_name";;
-
-        	[Nn]*)
-=======
         	cd "$PWD/$new_db_name"
             openConnection
             ;;
 
         	[Nn]*)
 	    	echo "Database '$new_db_name' created Successfully Type 2 to list your DBs"
->>>>>>> a3a376a68298d07c8d689e5158f30f3dff0ba268
         	return 0;;
         	*)
         	echo "Invalid response"
@@ -83,20 +67,6 @@ deleteDB() {
 
         case $resp in
         [Yy]*)
-<<<<<<< HEAD
-        rm -r "$del_dbname"
-	if [ $? -eq 0 ]; then
-                    echo "Database '$del_dbname' deleted successfully."
-                else
-                    echo "Failed to delete database '$del_dbname'. Please check permissions or try again later."
-	fi;;
-	[Nn]*)
-        return;;
-        *) 
-        echo "Invalid response";;
-        esac
-
-=======
             rm -r "$del_dbname"
             if [ $? -eq 0 ]; then
                 echo "Database '$del_dbname' deleted successfully."
@@ -110,7 +80,6 @@ deleteDB() {
         *)
         echo "Invalid response";;
         esac
->>>>>>> a3a376a68298d07c8d689e5158f30f3dff0ba268
 fi
 }
 
@@ -122,11 +91,7 @@ connectDB() {
     if [ -d "$dbname" ]; then 
         flag=1
         cd "$dbname"
-<<<<<<< HEAD
-        echo "$dbname is connected successfully."
-=======
         echo "Connected To DB: $dbname ."
->>>>>>> a3a376a68298d07c8d689e5158f30f3dff0ba268
         openConnection
         break
     else
@@ -134,12 +99,11 @@ connectDB() {
     fi
 }
 
+
+
 openConnection() {
-<<<<<<< HEAD
-=======
     
->>>>>>> a3a376a68298d07c8d689e5158f30f3dff0ba268
-    select name in ViewTable ListAllTable CreateTable InsertInTable UpdateTable DeleteTable Back; do
+    select name in ViewTable ListAllTable CreateTable InsertInTable UpdateTable DeleteTable selectFromTable Back; do
         case $REPLY in
             1) viewTable ;;
             2) listAllTable ;;
@@ -147,79 +111,16 @@ openConnection() {
             4) insertInTable ;;
             5) updateTable ;;
             6) deleteTable ;;
-            7) backToMain; break ;;
+	    7) selectFromTable;;
+            8) backToMain; break ;;
+	    
             *) echo "Invalid input" ;;
         esac
-<<<<<<< HEAD
-=======
     
->>>>>>> a3a376a68298d07c8d689e5158f30f3dff0ba268
     done
 }
 
 viewTable() {
-<<<<<<< HEAD
-    echo "done"
-}
-
-listAllTable() {
-    local folderArray
-    readarray -t folderArray <<< "$(ls)"
-
-    for file in "${folderArray[@]}"; do
-        if [ -f "$file" ]; then
-            echo "$file"
-        fi
-    done
-}
-
-createTable() {
-    read -p "Please enter your Table Name: " tableName
-
-    if [ -f "${tableName}_metadata" ]; then
-        echo "Error: A table with the same name already exists."
-        exit 1
-    fi
-
-    local columns
-    read -p "Please enter the number of columns: " columns
-    local set_primary_key=0
-    local myColumns=()
-
-    for ((i=0; i<columns; i++)); do 
-        local column_name
-        read -p "Please enter name of column $i: " column_name
-            
-        local primary_key_response
-        if [ "$set_primary_key" -eq 0 ]; then 
-            read -p "Do you want to make this column your primary key? [Y/N] " primary_key_response
-            if [[ "$primary_key_response" =~ ^[Yy]$ ]]; then
-                set_primary_key=1
-            fi
-        fi
-
-        local column_datatype
-        read -p "Enter data type of column $column_name [integer/string]: " column_datatype
-
-        myColumns+=("$column_name:$set_primary_key:$column_datatype")
-    done
-
-    echo "Table name: $tableName" > "${tableName}_metadata"
-    for column_info in "${myColumns[@]}"; do
-        echo "$column_info" >> "${tableName}_metadata"
-    done
-
-    touch "${tableName}_data"
-    echo "Table '$tableName' created successfully."
-}
-
-
-insertInTable() {
-    local table_name
-    read -p "Enter your table name: " table_name
-    local metadata_file="${table_name}_metadata"
-    local data_file="${table_name}_data"
-=======
     local tbName
     read -p "Please enter name of table : " tbName
     if [ -e "${tbName}_data.table" ]; then
@@ -303,7 +204,6 @@ insertInTable() {
     local metadata_file="${table_name}_metadata"
 
     local data_file="${table_name}_data.table"
->>>>>>> a3a376a68298d07c8d689e5158f30f3dff0ba268
 
     if [ ! -f "$metadata_file" ]; then
         echo "Error: Table '$table_name' does not exist."
@@ -311,44 +211,6 @@ insertInTable() {
     fi
 
     local columns=()
-<<<<<<< HEAD
-    local skip=true
-    while IFS=':' read -r column_name is_primary_key column_datatype; do
-        if [ "$skip" = true ]; then
-            skip=false
-            continue 
-        fi
-        columns+=("$column_name:$is_primary_key:$column_datatype")
-    done < "$metadata_file"
-
-    local data=()
-    for column_info in "${columns[@]}"; do
-        IFS=':' read -r column_name is_primary_key column_datatype <<< "$column_info"
-        read -p "Enter data for column $column_name: " column_value
-	echo pk = $is_primary_key
-	if [ "$is_primary_key" -eq 1 ]; then
-            
-              if isPrimaryKeyValueUnique "$data_file" "$column_value"; then
-                echo "Error: Data for primary key '$column_name' must be unique."
-                return 1
-            fi 
-           
-        fi
-
-
-        if [ "$column_datatype" = "integer" ] && ! [[ "$column_value" =~ ^[0-9]+$ ]]; then
-            echo "Error: Invalid data type for column $column_name. Expected integer."
-            return 1
-        elif [ "$column_datatype" = "string" ] && [[ "$column_value" =~ ^[0-9]+$ ]]; then
-            echo "Error: Invalid data type for column $column_name. Expected string."
-            return 1
-        fi
-
-        data+=("$column_value")
-    done
-
-    echo "${data[*]}" >> "$data_file"
-=======
 
     local skip=true
 
@@ -420,43 +282,10 @@ insertInTable() {
 unset  columns_names_arr
 unset  columns_types_arr
    
->>>>>>> a3a376a68298d07c8d689e5158f30f3dff0ba268
     echo "Data inserted successfully into table '$table_name'."
 }
 
 
-<<<<<<< HEAD
-isPrimaryKeyValueUnique() {
-    local data_file="$1"
-    local column_value="$2"
-
-    while IFS= read -r line; do
-        # Check if primary key value already exists in the data file
-        primary_key_value=$(echo "$line" | cut -d':' -f1)
-        if [ "$primary_key_value" = "$column_value" ]; then
-            return 1  # Not unique
-        fi
-    done < "$data_file"
-
-    return 0
-}
-
-
-
-updateTable() {
-    echo "done"
-}
-
-deleteTable() {
-    read -p "Please enter Table Name to delete: " tbName
-
-    if [ -e "$tbName".table ]; then 
-        rm -r "$tbName"
-        echo "$tbName is deleted successfully."
-    else
-        echo "$tbName not found."
-    fi
-=======
 
 
 updateTable() {
@@ -535,15 +364,141 @@ awk -F ':' -v field="$field_name" -v val="$value_to_check" -v updatec="$c" -v up
     echo " ${columns_names_arr[$((c-1))]}"
 
 
->>>>>>> a3a376a68298d07c8d689e5158f30f3dff0ba268
 
 }
+
+
+selectFromTable() {
+   select name in selectAllTable selectWithColumnName selectWithCondition; do
+    case $REPLY in
+        1) selectAllTable ;;
+        2) selectWithColumnName ;;
+        3) selectWithCondition ;;
+        *) echo "Invalid input" ;;
+        
+    esac
+done 
+}
+
+selectAllTable(){
+    read -p "Enter the table name: " table_name
+    local data_file="${table_name}_data.table"
+    if [ ! -f "${table_name}_data.table" ]; then
+        echo "Error: Table '$table_name' does not exist."
+        return 1
+    fi
+
+    awk -F ':' '{ print $0 }' "$data_file"
+                break;
+}
+
+selectWithColumnName(){
+    read -p "Enter the table name: " table_name
+    
+
+    if [ ! -f "${table_name}_data.table" ]; then
+        echo "Error: Table '$table_name' does not exist."
+        return 1
+    fi
+    local metadata_file="${table_name}_metadata"
+    local data_file="${table_name}_data.table"
+
+    local get_all_columns_name=$(awk -F ':' 'NR!=1 {print $1}' "$metadata_file")
+    readarray -t columns_names_arr <<< "$get_all_columns_name"
+ 
+    local column_index
+    read -p "Enter the column name: " column_name
+
+    if ! [[ " ${columns_names_arr[@]} " =~ " $column_name " ]]; then
+        echo "Error: '$column_name' is not a valid column name."
+        return 1
+    fi
+    
+    for ((i = 0; i < ${#columns_names_arr[@]}; i++)); do
+    if [[ "${columns_names_arr[i]}" == "$column_name" ]]; then
+        column_index=$i
+        break
+    fi
+   done
+
+   awk -F ':' -v col_index="$((column_index + 1))" ' { print $col_index }' "$data_file"
+  
+
+    
+}
+
+
+selectWithCondition() {   
+    read -p "Enter the table name: " table_name
+    if [ ! -f "${table_name}_data.table" ]; then
+        echo "Error: Table '$table_name' does not exist."
+        return 1
+    fi
+
+    local metadata_file="${table_name}_metadata"
+    local data_file="${table_name}_data.table"
+
+    local get_all_columns_name=$(awk -F ':' 'NR!=1 {print $1}' "$metadata_file")
+    readarray -t columns_names_arr <<< "$get_all_columns_name"
+
+    local condition_column_index
+    local select_column_index
+
+    read -p "Enter the column name to select: " select_column
+    read -p "Enter the condition column name: " condition_column
+    read -p "Enter the condition column value: " column_value
+
+     if ! [[ " ${columns_names_arr[@]} " =~ " $select_column " ]]; then
+        echo "Error: '$select_column' is not a valid column name."
+        return 1
+    fi
+
+    if ! [[ " ${columns_names_arr[@]} " =~ " $condition_column " ]]; then
+        echo "Error: '$condition_column' is not a valid column name."
+        return 1
+    fi
+
+
+    for ((i = 0; i < ${#columns_names_arr[@]}; i++)); do
+    if [[ "${columns_names_arr[i]}" == "$condition_column" ]]; then
+        condition_column_index=$i
+        break
+    fi
+   done
+
+   for ((i = 0; i < ${#columns_names_arr[@]}; i++)); do
+     if [[ "${columns_names_arr[i]}" == "$select_column" ]]; then
+        select_column_index=$i
+        break
+     fi
+   done
+
+
+   local output=$(awk -F ':' -v cond_value="$column_value" -v sel_column="$((select_column_index + 1))" \
+                    -v OFS=':' -v cond_col="$((condition_column_index + 1))" \
+                    '$cond_col == cond_value { print $sel_column }' "$data_file")
+
+    
+
+    if [ -z "$output" ]; then
+          echo "No rows found in table '$table_name' where '$condition_column' equals '$column_value'."
+    else
+          echo "$output"
+    fi
+}
+
+    
+
 
 backToMain() {
     cd ..
     echo "back to main menu"
 }
-<<<<<<< HEAD
+exitDBMS(){
+    cd ..
+    echo "disconnected"
+}
+
 
 if [ -d "Databases" ];
 then
@@ -551,20 +506,7 @@ then
 else
 	mkdir "Databases";
 	cd "Databases"; 
-=======
-exitDBMS(){
-    cd ..
-    echo "disconnected"
-}
-
-if [ -d "$db_c" ]; then
-    cd "$db_c"
-else
-    mkdir "$db_c"
-    cd "$db_c"
->>>>>>> a3a376a68298d07c8d689e5158f30f3dff0ba268
 fi
-
 
 select name in CreateDB ListDB ConnectDB DeleteDB Exit; do
     case $REPLY in
@@ -572,11 +514,7 @@ select name in CreateDB ListDB ConnectDB DeleteDB Exit; do
         2) listDB ;;
         3) connectDB ;;
         4) deleteDB ;;
-<<<<<<< HEAD
-        5) break ;;
-=======
         5) exitDBMS; break ;;
->>>>>>> a3a376a68298d07c8d689e5158f30f3dff0ba268
         *) echo "Invalid input" ;;
     esac
 done
