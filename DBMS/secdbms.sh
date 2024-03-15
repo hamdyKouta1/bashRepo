@@ -324,10 +324,26 @@ updateTable() {
 
      local target_record
      local target_field
-
+     while true; do    
      read -p "Enter value of $get_pk to update : " target_record
+        if [ ${columns_types_arr[$pk_nr]}  = "integer" ] && [[ "$target_record" =~ ^[0-9]+$ ]]; then
+            break    
+        elif [ ${columns_types_arr[$pk_nr]}  = "string" ] && [[ "$target_record" =~ ^[0-9]+$ ]]; then
+            break
+        else
+        echo "not compatible type"
+        fi
+     done
 
+
+      while true; do    
      read -p "Enter column name to update : " target_field
+         if [[ " ${columns_names_arr[@]} " =~ " $target_field " ]]; then
+             break
+        else
+            echo "Target field not found. Please try again."
+        fi
+     done
 
     let c=1
     for val in "${columns_names_arr[@]}"; do
@@ -337,31 +353,54 @@ updateTable() {
     fi
     ((c++))
     done
-    temp_file="tmp%tmp"
-    touch "$temp_file"
+
+    
 
     local updated_value
 
+while true; do    
     read -p "Enter  new value : " updated_value
-
+        if [ ${columns_types_arr[$((c-1))]}  = "integer" ] && [[ "$target_record" =~ ^[0-9]+$ ]]; then
+            break    
+        elif [ ${columns_types_arr[$((c-1))]}  = "string" ] && [[ "$target_record" =~ ^[0-9]+$ ]]; then
+            break
+        else
+        echo "not compatible type"
+        fi
+     done
     field_name="$pk_nr"
     value_to_check="$target_record"
 
-awk -F ':' -v field="$field_name" -v val="$value_to_check" -v updatec="$c" -v updated_value="$updated_value" '
-    BEGIN { OFS=":" }
-    $field == val {  found=1;   $updatec=updated_value; }   
-    1
-  
-' "${table_name}_data.table" > "${temp_file}"
 
-        #if [ -n "$res" ] && [ "$res" -eq 1 ]; then
-         #   echo "updated"
-          #  flag=1
-        #fi
-        mv "$temp_file" "${table_name}_data.table"
+    res=$(awk -F ':' -v field="$field_name" -v val="$value_to_check" '
+        BEGIN { OFS=":"; IFS=":" }
+        $field == val { found=1 }
+        END { print found }
+    ' "${table_name}_data.table")
 
+        if [ -n "$res" ] && [ "$res" -eq 1 ]; then
 
-    echo " ${columns_names_arr[$((c-1))]}"
+            echo "found and updated"
+
+            temp_file="tmp%tmp"
+            touch "$temp_file"
+
+            awk -F ':' -v field="$field_name" -v val="$value_to_check" -v updatec="$c" -v updated_value="$updated_value" '
+                    BEGIN { OFS=":";IFS=":" }
+                    $field == val {  found=1;   $updatec=updated_value; }   
+                    1
+                    
+                    ' "${table_name}_data.table" > "${temp_file}"
+
+       
+        
+            mv "$temp_file" "${table_name}_data.table"
+
+        else
+            echo "target record can not be found"
+        fi
+       
+
 
 
 
